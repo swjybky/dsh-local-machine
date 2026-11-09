@@ -1,0 +1,54 @@
+{
+  "name": "dsh-plugin-local-machine",
+  "version": "1.0.0",
+  "description": "Local machine panel: CPU, memory, and GPU usage in the sidebar, with a refresh button.",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "cpu",
+    "memory",
+    "gpu",
+    "sidebar"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "homepage": "https://github.com/swjybky/dsh-local-machine#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/swjybky/dsh-local-machine.git"
+  },
+  "bugs": {
+    "url": "https://github.com/swjybky/dsh-local-machine/issues"
+  },
+  "engines": {
+    "dsh": ">=0.2.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg"
+  ],
+  "scripts": {
+    "index": "node scripts/make-index.mjs"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true
+    }
+  }
+}

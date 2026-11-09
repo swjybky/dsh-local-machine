@@ -1,0 +1,3 @@
+- insert:
+    - id: local-machine
+      name: 'dsh-plugin-local-machine'

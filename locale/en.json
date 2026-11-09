@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Local machine",
+    "description": "Shows local CPU, memory, and GPU usage in the sidebar, with a manual refresh."
+  }
+}
