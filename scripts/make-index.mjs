@@ -28,12 +28,12 @@ const INDEX = {
 const PLUGIN = {
   title: { en: 'Local machine', zh: '本机管理' },
   description: {
-    en: 'CPU, memory, and GPU usage in the sidebar, with a refresh button.',
-    zh: '在左侧栏查看本机 CPU、内存与 GPU 占用情况，可手动刷新。',
+    en: 'System dashboard: CPU, memory, GPU, disk, network, sensors, and top processes with live refresh and trends.',
+    zh: '本机系统面板：CPU、内存、GPU、磁盘、网络、温度与进程实时监控。',
   },
   author: 'swjybky',
   category: 'system',
-  keywords: ['cpu', 'memory', 'gpu', 'sidebar', 'monitoring'],
+  keywords: ['cpu', 'memory', 'gpu', 'disk', 'network', 'processes', 'sidebar', 'monitoring'],
 }
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')

@@ -1,14 +1,21 @@
 {
   "name": "dsh-plugin-local-machine",
-  "version": "1.0.0",
-  "description": "Local machine panel: CPU, memory, and GPU usage in the sidebar, with a refresh button.",
+  "version": "2.0.0",
+  "description": "Local system dashboard: CPU, memory, GPU, disk, network, sensors, and top processes with live refresh and trends.",
   "keywords": [
     "dsh",
     "dsh-plugin",
     "cpu",
     "memory",
     "gpu",
-    "sidebar"
+    "disk",
+    "network",
+    "processes",
+    "system-monitor",
+    "sidebar",
+    "macos",
+    "windows",
+    "linux"
   ],
   "license": "MIT",
   "type": "module",
@@ -35,12 +42,14 @@
   "files": [
     "index.js",
     "client.js",
+    "lib/",
     "cordis.patch.yml",
     "locale/*.json",
     "icon.svg"
   ],
   "scripts": {
-    "index": "node scripts/make-index.mjs"
+    "index": "node scripts/make-index.mjs",
+    "test": "node --test"
   },
   "dsh": {
     "bundle": {
