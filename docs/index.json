@@ -34,8 +34,8 @@
         "zh": "本机管理"
       },
       "description": {
-        "en": "CPU, memory, and GPU usage in the sidebar, with a refresh button.",
-        "zh": "在左侧栏查看本机 CPU、内存与 GPU 占用情况，可手动刷新。"
+        "en": "System dashboard: CPU, memory, GPU, disk, network, sensors, and top processes with live refresh and trends.",
+        "zh": "本机系统面板：CPU、内存、GPU、磁盘、网络、温度与进程实时监控。"
       },
       "icon": "./icon.svg",
       "author": "swjybky",
@@ -49,6 +49,9 @@
           "cpu",
           "memory",
           "gpu",
+          "disk",
+          "network",
+          "processes",
           "sidebar",
           "monitoring"
         ],
@@ -57,6 +60,18 @@
         ]
       },
       "versions": [
+        {
+          "version": "2.0.0",
+          "publishTimestamp": 1794212896,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/swjybky/dsh-local-machine",
+            "commit": "b5dee5f835e2a25699d50cc97b64d63e02718851"
+          },
+          "engines": {
+            "dsh": ">=0.2.0"
+          }
+        },
         {
           "version": "1.0.0",
           "publishTimestamp": 1794198866,
