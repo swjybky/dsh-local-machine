@@ -1,0 +1,75 @@
+{
+  "format": 1,
+  "title": {
+    "en": "swjybky plugins",
+    "zh": "swjybky 插件"
+  },
+  "description": {
+    "en": "DSH bundles published by swjybky.",
+    "zh": "swjybky 发布的 DSH 插件。"
+  },
+  "metadata": {
+    "categories": {
+      "system": {
+        "title": {
+          "en": "System",
+          "zh": "系统"
+        }
+      }
+    },
+    "labels": {
+      "open-source": {
+        "title": {
+          "en": "Open source",
+          "zh": "开源"
+        }
+      }
+    }
+  },
+  "plugins": [
+    {
+      "name": "dsh-plugin-local-machine",
+      "title": {
+        "en": "Local machine",
+        "zh": "本机管理"
+      },
+      "description": {
+        "en": "CPU, memory, and GPU usage in the sidebar, with a refresh button.",
+        "zh": "在左侧栏查看本机 CPU、内存与 GPU 占用情况，可手动刷新。"
+      },
+      "icon": "./icon.svg",
+      "author": "swjybky",
+      "homepage": "https://github.com/swjybky/dsh-local-machine",
+      "repository": {
+        "url": "https://github.com/swjybky/dsh-local-machine"
+      },
+      "metadata": {
+        "category": "system",
+        "keywords": [
+          "cpu",
+          "memory",
+          "gpu",
+          "sidebar",
+          "monitoring"
+        ],
+        "labels": [
+          "open-source"
+        ]
+      },
+      "versions": [
+        {
+          "version": "1.0.0",
+          "publishTimestamp": 1794198866,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/swjybky/dsh-local-machine",
+            "commit": "085e8f7c7eca25ecf0562e3f9e9ebb62f35f22b5"
+          },
+          "engines": {
+            "dsh": ">=0.2.0"
+          }
+        }
+      ]
+    }
+  ]
+}
