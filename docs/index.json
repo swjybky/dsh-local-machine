@@ -34,8 +34,8 @@
         "zh": "本机管理"
       },
       "description": {
-        "en": "System dashboard: CPU, memory, GPU, disk, network, sensors, and top processes with live refresh and trends.",
-        "zh": "本机系统面板：CPU、内存、GPU、磁盘、网络、温度与进程实时监控。"
+        "en": "System dashboard: CPU, memory, GPU, disk, network, sensors, and top processes, plus DSH process, thread, and session detail.",
+        "zh": "本机系统面板：CPU、内存、GPU、磁盘、网络、温度与进程实时监控，并细化到 DSH 进程、线程与会话。"
       },
       "icon": "./icon.svg",
       "author": "swjybky",
@@ -52,6 +52,7 @@
           "disk",
           "network",
           "processes",
+          "sessions",
           "sidebar",
           "monitoring"
         ],
@@ -60,6 +61,18 @@
         ]
       },
       "versions": [
+        {
+          "version": "2.1.0",
+          "publishTimestamp": 1794366935,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/swjybky/dsh-local-machine",
+            "commit": "112226fd429dc69afcee8b11292ab23f11f565a1"
+          },
+          "engines": {
+            "dsh": ">=0.2.0"
+          }
+        },
         {
           "version": "2.0.0",
           "publishTimestamp": 1794212896,
