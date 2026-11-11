@@ -613,7 +613,7 @@ test('parseLoadThreads reads the total scheduling entities', () => {
 
 test('live snapshot matches the panel payload contract on this machine', async () => {
   const snapshot = await readSnapshot()
-  assert.equal(snapshot.schemaVersion, 2)
+  assert.equal(snapshot.schemaVersion, 3)
   assert.equal(typeof snapshot.sampledAt, 'string')
   assert.equal(snapshot.platform, process.platform)
   assert.equal(typeof snapshot.os.name, 'string')

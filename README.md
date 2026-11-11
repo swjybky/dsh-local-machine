@@ -1,6 +1,6 @@
 # dsh-plugin-local-machine
 
-A DSH (DeepSeek Harness) bundle that adds **Local machine** to the left sidebar: a full local system dashboard with system information, CPU, memory, GPU, disk, network, temperature, fan, and top-process monitoring. It runs on Linux, macOS, and Windows.
+A DSH (DeepSeek Harness) bundle that adds **Local machine** to the left sidebar: a full local system dashboard with system information, CPU, memory, GPU, disk, network, temperature, fan, and top-process monitoring, plus a finer-grained view of the DSH processes and sessions running on this machine. It runs on Linux, macOS, and Windows.
 
 [中文说明](README.zh.md)
 
@@ -18,6 +18,10 @@ A DSH (DeepSeek Harness) bundle that adds **Local machine** to the left sidebar:
   - disk usage plus read/write throughput, network link speed, IPv4 address, cumulative traffic, and transfer rates;
   - temperature sensors and one system fan;
   - the top 8 processes by CPU with PID, user, a CPU bar, resident memory, and NVIDIA compute VRAM when available.
+- Three DSH-focused cards, each full width:
+  - **DSH processes**: the harness process tree (main, GPU, renderer, Host, utility, tool subprocess, terminal) with role badges, per-process CPU, resident memory, swap, thread count, disk read/write rate, file descriptors, socket count, and established remote peers;
+  - **DSH sessions**: every session the Host knows about, with title, cwd, live/idle state, event count, token totals, context-window pressure, turn and step counts, model and tool time, log size and growth, and the processes and threads attributed to that session;
+  - **Host runtime**: process uptime, Node/Electron/V8 versions, JS heap usage, event-loop delay, active handles by type, resource-usage counters, and the busiest threads of the DSH process.
 - Simplified Chinese and English copy, with light and dark themes.
 - No native module, build step, elevated permission, or background sampling timer: the panel samples when it mounts, on refresh, and on the chosen interval while mounted. Hidden tabs skip automatic samples.
 
@@ -87,8 +91,18 @@ When the client is newer than the running Host half (for example after updating 
 | Temperatures and fan | hwmon (`coretemp`, `nvme`, `acpitz`, `amdgpu`, …) | No unprivileged system sensor API; NVIDIA GPU temperature appears only when `nvidia-smi` is available | `MSAcpi_ThermalZoneTemperature` and `Win32_Fan`, plus NVIDIA GPU temperature |
 | Top processes | `ps` by CPU, plus total threads from `/proc/loadavg` | `ps` by CPU; thread count from `sysctl kern.num_threads` | `Win32_PerfFormattedData_PerfProc_Process` |
 | Process GPU VRAM | `nvidia-smi --query-compute-apps` when an NVIDIA GPU is reported | Same | Same |
+| DSH process tree | `ps -A -ww -o pid=,ppid=,user=,pcpu=,rss=,nlwp=,etime=,stat=,comm=,args=` filtered to the tree rooted at the DSH main process (or the `ARGV0` process) | Same, without `nlwp` (macOS `ps` has no such column), so thread counts come from `/proc` only on Linux | Windows PowerShell `Get-CimInstance Win32_Process` with `ParentProcessId`, `WorkingSetSize`, `ThreadCount`, and `CommandLine` |
+| DSH process role | `classifyDshRole` matches argv: Electron `--type=renderer/gpu-process/utility`, `dsh-host/lib`, `app.asar.unpacked/dsh/lib`, and tool/terminal subprocess markers | Same | Same |
+| Per-process CPU, memory, swap | `ps` `pcpu`/`rss`, plus `/proc/<pid>/status` `VmRSS`/`VmSwap` for the tree members | `ps` only; swap and RSS come from `ps` | `Win32_Process` `UserModeTime` deltas and `WorkingSetSize` |
+| Per-process disk I/O, file descriptors, sockets | `/proc/<pid>/io` (`rchar`/`wchar`/`syscr`/`syscw`), `readlink /proc/<pid>/fd`, and `socket:[inode]` mapped through `/proc/<pid>/net/tcp` and `tcp6` for established peers | Not exposed; those columns show **—** | Not exposed per process; those columns show **—** |
+| Host JS heap, event-loop delay, handles | `process.memoryUsage()`, `perf_hooks.monitorEventLoopDelay`, `process._getActiveHandles()` and `getActiveResourcesInfo()` | Same | Same |
+| Busiest threads | `/proc/self/task/<tid>/stat` (utime+stime ticks, state, name), with `CLK_TCK` from `getconf CLK_TCK` (default 100) | Not exposed; the card says so instead of showing zeros | Not exposed; the card says so instead of showing zeros |
+| Session list, tokens, context pressure, turns/steps | `ctx.sessionProjections.snapshot(session).values` (`title`, `tokenUsage`, `contextPressure`, `sessionStats`), plus `persistence.stat(sessionId)` for log bytes and event count | Same | Same |
+| Session hardware attribution | `DSH_SESSION_ID` in `/proc/<pid>/environ` for tree members, which tool and terminal subprocesses inherit; the marker is authoritative | Falls back to a cwd substring match against the session working directory (labelled **by working directory** in the UI) | Same fallback as macOS |
 
 The panel never invents a percentage. A missing counter is reported as `—`, **Usage unavailable**, **Driver unavailable**, or **No GPU detected**. Windows process user names are not exposed by the process performance counters, so that column shows **—** on Windows. On Linux and macOS the per-process CPU column is the lifetime average reported by `ps`; Windows uses the instantaneous performance counter. Per-process GPU VRAM is available only for NVIDIA compute processes.
+
+DSH usage that lives inside one Node process cannot be split per conversation: the V8 heap and the event loop are shared by every session in that process. The **DSH sessions** card therefore reports session-level tokens, context pressure, timing, and log size — real Host metrics — and keeps hardware figures explicitly on the process side. A session shows `0` processes only when no child process can be attributed to it; the attribution basis is printed on the card, so a heuristic match is never presented as exact. When no harness process is found, `harness.available` is `false` with `reason = "not-detected"` and the cards say so instead of rendering empty rows.
 
 ## Host endpoint
 
@@ -100,7 +114,7 @@ GET /local-machine/metrics
 
 ```json
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "sampledAt": "2026-11-09T06:58:02.515Z",
   "platform": "linux",
   "os": {
@@ -200,19 +214,107 @@ GET /local-machine/metrics
         "gpuMemoryBytes": 222298112
       }
     ]
+  },
+  "harness": {
+    "available": true,
+    "reason": null,
+    "reasonDetail": null,
+    "sampledAt": "2026-11-09T06:58:02.515Z",
+    "pid": 4001,
+    "attribution": "environment",
+    "root": { "pid": 4001, "name": "dsh", "role": "main", "command": "dsh" },
+    "host": {
+      "pid": 4102,
+      "name": "dsh-host",
+      "uptimeSeconds": 8123,
+      "versions": { "node": "22.11.0", "electron": null, "v8": "12.4" },
+      "heap": { "usedBytes": 148373504, "totalBytes": 268435456, "rssBytes": 412000256, "externalBytes": 24379392, "usage": 55.3 },
+      "eventLoop": { "meanMs": 1.8, "p99Ms": 12.4, "maxMs": 48.2, "samples": 46 },
+      "handles": { "active": 37, "byType": { "TCPSocketWrap": 12, "Timeout": 4 } },
+      "resourceUsage": {
+        "maxRssBytes": 445644800,
+        "voluntaryContextSwitches": 18244,
+        "involuntaryContextSwitches": 312,
+        "fsReads": 9712,
+        "fsWrites": 2411,
+        "ipcSent": 82,
+        "ipcReceived": 91
+      },
+      "threadPoolSize": 4,
+      "threads": {
+        "available": true,
+        "count": 24,
+        "top": [{ "tid": 4110, "name": "dsh-host", "state": "running", "cpuPercent": 3.4 }]
+      }
+    },
+    "processes": [
+      {
+        "pid": 4001,
+        "ppid": 1,
+        "role": "main",
+        "name": "dsh",
+        "command": "dsh",
+        "cpuPercent": 1.6,
+        "memoryBytes": 268435456,
+        "swapBytes": 0,
+        "threads": 32,
+        "uptimeSeconds": 8123,
+        "state": "sleeping",
+        "sessionId": null,
+        "isHost": false,
+        "readBytesPerSecond": null,
+        "writeBytesPerSecond": null,
+        "fileDescriptors": 84,
+        "socketCount": 16,
+        "voluntaryContextSwitches": 9104,
+        "involuntaryContextSwitches": 88,
+        "peers": [{ "protocol": "tcp", "remoteHost": "127.0.0.1", "remotePort": 37487, "localPort": 51204 }],
+        "gpuMemoryBytes": null
+      }
+    ],
+    "totals": { "processCount": 6, "cpuPercent": 7.9, "memoryBytes": 1073741824, "threads": 156, "readBytesPerSecond": 204800, "writeBytesPerSecond": 40960 },
+    "sessions": [
+      {
+        "sessionId": "session-4b91e77d",
+        "title": "Add hardware monitoring",
+        "cwd": "/home/workstation/project",
+        "running": true,
+        "live": true,
+        "events": 412,
+        "tokens": { "inputTokens": 214000, "outputTokens": 18200, "cacheReadTokens": 198000, "cacheWriteTokens": 42000, "totalTokens": 472200 },
+        "context": { "usedTokens": 118400, "projectedTokens": 120100, "windowTokens": 200000, "usage": 59.2 },
+        "stats": { "turns": 18, "steps": 64, "llmMs": 412000, "toolMs": 128000, "ttftMs": 640, "ttftSteps": 61, "decodeMs": 208000, "decodeTokens": 18200 },
+        "logBytes": 4194304,
+        "logBytesPerSecond": 0,
+        "processCount": 1,
+        "threads": 1,
+        "cpuPercent": 0.4,
+        "memoryBytes": 62914560,
+        "vramBytes": null,
+        "swapBytes": 0,
+        "readBytesPerSecond": 0,
+        "writeBytesPerSecond": 0,
+        "fileDescriptors": 12,
+        "socketCount": 2,
+        "pids": [5180]
+      }
+    ]
   }
 }
 ```
 
 Notes on the payload:
 
-- `schemaVersion` is `2`. A payload without it comes from an older Host half, and the client asks for a DSH restart instead of showing blank fields.
+- `schemaVersion` is `3`. A payload without it comes from an older Host half, and the client asks for a DSH restart instead of showing blank fields. Version `3` adds the `harness` block; every earlier field keeps its shape.
 - `platform` is Node's `process.platform` (`linux`, `darwin`, or `win32`).
 - `cpu.cores` remains the logical thread count for backward compatibility; `cpu.physicalCores` is the physical core count. `cpu.load` is the 1-minute load for compatibility; `cpu.loadAverage` carries all three values.
 - `cpu.perCore[].kind` is `p`, `e`, or `null`; `hybrid` is true only when the OS exposes both core classes.
 - `gpu.available` means GPU utilization is readable. `gpu.reason` is `driver-unavailable` when the model is known but the driver cannot be queried, `unsupported` when the OS exposes no utilization counter, and `not-detected` when no GPU is found.
 - `null` means the platform did not expose that value. `diskIO`, `network`, `processes`, and `fan` can be `null` when the platform has no usable source.
 - `sensors[].key` is `cpu`, `gpu`, `nvme`, `board`, or `other`. A GPU temperature reported by `nvidia-smi` is merged into this list, and unclassified ACPI zones use `other` with their raw label.
+- `harness.available` is `false` with `reason = "not-detected"` when the harness process tree cannot be found; `processes` is then `[]` while `host` still describes the current process. `harness.attribution` is `environment` when `DSH_SESSION_ID` decided the assignment and `heuristic` when the cwd fallback did.
+- `harness.host.threads.available` is `false` on macOS and Windows, where per-thread CPU is not exposed to an unprivileged process.
+- `harness.sessions[].context` is `null` until the Host has recorded token usage for that session, and the card then shows **No usage recorded**.
 
 ## Files
 
@@ -221,11 +323,12 @@ Notes on the payload:
 | `index.js` | Host half: the `/local-machine/metrics` route and its admission checks |
 | `lib/platform.js` | Host half: cross-platform probes, caching, rate sampling, and snapshot assembly |
 | `lib/parsers.js` | Host half: pure parsers for procfs, sysfs, and command output |
+| `lib/harness.js` | Host half: the DSH process tree, per-thread and per-session probes, Host runtime metrics, and session attribution |
 | `client.js` | Client half: the sidebar entry and the full dashboard page |
 | `cordis.patch.yml` | Bundle patch that inserts the `local-machine` row |
 | `locale/*.json` | Plugin Manager title and description per language |
 | `icon.svg` | Plugin icon |
-| `test/` | Parser fixtures for all three OSes, a live snapshot test, fallback test, and route tests |
+| `test/` | Parser fixtures for all three OSes, harness parser fixtures, a live snapshot test, fallback test, and route tests |
 | `scripts/make-index.mjs` | Writes `docs/index.json` (plugin market index, format 1) from the manifest and `HEAD` |
 | `docs/` | Published plugin index and its icon (GitHub Pages) |
 
@@ -244,7 +347,7 @@ The client is plain React with no build step: `client.js` registers a factory wi
 ```bash
 # 1. bump the version in package.json, commit the code
 git add -A && git commit -m "feat: ..."
-git tag v2.0.0
+git tag v2.1.0
 
 # 2. regenerate the index (pins the new commit), then commit and push
 node scripts/make-index.mjs

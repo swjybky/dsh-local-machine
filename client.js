@@ -8,6 +8,13 @@ window.__ModuleLoader__.load({
     const NS = 'local-machine';
     /** Main-panel key; the sidebar row and the center page share it. */
     const PANEL_ID = 'local-machine';
+    /**
+     * Newest snapshot schema this client understands.
+     * The DSH half is loaded once at startup, so a client that needs a newer
+     * schema must ask for a restart instead of rendering fields the running
+     * collector never sends.
+     */
+    const REQUIRED_SCHEMA = 3;
 
     /** Simplified Chinese copy. */
     const zh = {
@@ -19,8 +26,8 @@ window.__ModuleLoader__.load({
       updated: '上次刷新 {time}',
       never: '尚未刷新',
       error: '读取失败：{message}',
-      'legacy.title': '需要重启 DSH 才能采集完整数据',
-      'legacy.body': '客户端已更新，但 Host 采集器仍是旧版本。系统信息、磁盘、网络、温度和进程数据会在完全退出并重新启动 DSH 后出现；刷新页面不会加载新的 Host 代码。',
+      'legacy.title': '需要重启 DSH 才能显示这些卡片',
+      'legacy.body': '客户端已更新，但正在运行的 Host 采集器仍是旧版本，因此没有下发 DSH 进程、线程和会话数据。完全退出并重新启动 DSH 后才会加载新的 Host 代码；刷新页面不够。',
       'legacy.release': '重启 DSH 后显示系统信息',
       'status.collecting': '正在采集',
       'status.paused': '已暂停',
@@ -130,6 +137,84 @@ window.__ModuleLoader__.load({
       'proc.summary': '共 {processes} 个进程 · {threads} 个线程 · 按 CPU 排序',
       'proc.summaryNoThreads': '共 {processes} 个进程 · 按 CPU 排序',
       'proc.empty': '无进程数据',
+      'harness.title': 'DSH 进程',
+      'harness.subtitle': '当前 DeepSeek Harness 进程树与线程级占用',
+      'harness.unavailable': '未检测到 DSH 进程树',
+      'harness.unavailableHint': '面板不在 DSH 主进程内运行，或 ps 无法读取进程参数',
+      'harness.role.main': '主进程',
+      'harness.role.host': 'Host',
+      'harness.role.renderer': '渲染进程',
+      'harness.role.gpu': 'GPU 进程',
+      'harness.role.utility': '工具进程',
+      'harness.role.subprocess': '工具子进程',
+      'harness.role.terminal': '终端',
+      'harness.role.other': '其他',
+      'harness.processes': '{count} 个进程',
+      'harness.threads': '{count} 线程',
+      'harness.cpuShare': '占系统 CPU {value}',
+      'harness.memoryShare': '占系统内存 {value}',
+      'harness.totalCpu': 'CPU 合计',
+      'harness.totalMemory': '内存合计',
+      'harness.totalIo': '读写合计',
+      'harness.pid': 'PID',
+      'harness.role': '角色',
+      'harness.rss': '常驻内存',
+      'harness.swap': '交换',
+      'harness.threadsCol': '线程',
+      'harness.io': '读 / 写',
+      'harness.fd': '文件描述符',
+      'harness.sockets': '套接字',
+      'harness.uptime': '运行时长',
+      'harness.command': '命令行',
+      'harness.hostTitle': 'Host 运行时',
+      'harness.heap': 'JS 堆',
+      'harness.heapUsage': '{used} / {total}',
+      'harness.eventLoop': '事件循环延迟',
+      'harness.eventLoopValue': '平均 {mean} · P99 {p99}',
+      'harness.handles': '活动句柄',
+      'harness.handlesValue': '{count} 个 · {types}',
+      'harness.contextSwitches': '上下文切换（自愿 / 非自愿）',
+      'harness.versions': 'Node / V8',
+      'harness.topThreads': '占用最高的线程',
+      'harness.threadState.running': '运行中',
+      'harness.threadState.sleeping': '休眠',
+      'harness.threadState.disk': '磁盘等待',
+      'harness.threadState.zombie': '僵尸',
+      'harness.threadState.stopped': '已停止',
+      'harness.threadState.idle': '空闲',
+      'harness.self': '当前进程',
+      'harness.noThreads': '此系统不提供线程级数据',
+      'session.title': 'DSH 会话',
+      'session.subtitle': '当前打开的会话及其硬件占用',
+      'session.empty': '没有活动会话',
+      'session.emptyHint': '会话在 Host 内创建后会自动出现在这里',
+      'session.unavailable': 'Host 未提供会话服务',
+      'session.noProcess': '无子进程',
+      'session.id': '会话 ID',
+      'session.cwd': '工作目录',
+      'session.running': '运行中',
+      'session.idle': '空闲',
+      'session.messages': '事件数',
+      'session.tokens': 'Token',
+      'session.tokensValue': '输入 {input} · 输出 {output}',
+      'session.cacheTokens': '缓存读取 {value}',
+      'session.context': '上下文占用',
+      'session.contextValue': '{used} / {window}',
+      'session.contextUnknown': '尚无用量记录',
+      'session.stats': '轮次 / 步骤',
+      'session.statsValue': '{turns} 轮 · {steps} 步',
+      'session.llmTime': '模型耗时 {value}',
+      'session.toolTime': '工具耗时 {value}',
+      'session.logBytes': '会话文件',
+      'session.logGrowth': '增长 {value}/s',
+      'session.attributed': '关联进程',
+      'session.pids': 'PID {pids}',
+      'session.processes': '{count} 个进程 · {threads} 线程',
+      'session.attribution.environment': '按 DSH_SESSION_ID 归属',
+      'session.attribution.heuristic': '按工作目录推断归属',
+      'session.attribution.none': '无法归属进程',
+      'session.live': '活动',
+      'session.persisted': '已归档',
       unknown: '未知',
       unavailable: '不可用',
     };
@@ -144,8 +229,8 @@ window.__ModuleLoader__.load({
       updated: 'Last refresh {time}',
       never: 'Not sampled yet',
       error: 'Read failed: {message}',
-      'legacy.title': 'Restart DSH to collect the full snapshot',
-      'legacy.body': 'The client is updated, but the Host collector is still the previous version. System information, disks, network, temperature, and process data appear after fully quitting and restarting DSH; refreshing the page does not reload Host code.',
+      'legacy.title': 'Restart DSH to fill these cards',
+      'legacy.body': 'The client is updated, but the running Host collector is still the previous version, so it never sends DSH process, thread, or session data. Fully quit and restart DSH to load the new Host code; refreshing the page is not enough.',
       'legacy.release': 'Restart DSH to load system information',
       'status.collecting': 'Collecting',
       'status.paused': 'Paused',
@@ -255,6 +340,84 @@ window.__ModuleLoader__.load({
       'proc.summary': '{processes} processes · {threads} threads · sorted by CPU',
       'proc.summaryNoThreads': '{processes} processes · sorted by CPU',
       'proc.empty': 'No process data',
+      'harness.title': 'DSH processes',
+      'harness.subtitle': 'The running DeepSeek Harness process tree and per-thread usage',
+      'harness.unavailable': 'No harness process tree detected',
+      'harness.unavailableHint': 'The panel is not running inside the DSH main process, or ps cannot read process arguments',
+      'harness.role.main': 'Main',
+      'harness.role.host': 'Host',
+      'harness.role.renderer': 'Renderer',
+      'harness.role.gpu': 'GPU',
+      'harness.role.utility': 'Utility',
+      'harness.role.subprocess': 'Tool subprocess',
+      'harness.role.terminal': 'Terminal',
+      'harness.role.other': 'Other',
+      'harness.processes': '{count} processes',
+      'harness.threads': '{count} threads',
+      'harness.cpuShare': '{value} of system CPU',
+      'harness.memoryShare': '{value} of system memory',
+      'harness.totalCpu': 'Total CPU',
+      'harness.totalMemory': 'Total memory',
+      'harness.totalIo': 'Total I/O',
+      'harness.pid': 'PID',
+      'harness.role': 'Role',
+      'harness.rss': 'Resident',
+      'harness.swap': 'Swap',
+      'harness.threadsCol': 'Threads',
+      'harness.io': 'Read / write',
+      'harness.fd': 'File descriptors',
+      'harness.sockets': 'Sockets',
+      'harness.uptime': 'Uptime',
+      'harness.command': 'Command line',
+      'harness.hostTitle': 'Host runtime',
+      'harness.heap': 'JS heap',
+      'harness.heapUsage': '{used} / {total}',
+      'harness.eventLoop': 'Event-loop delay',
+      'harness.eventLoopValue': 'Mean {mean} · P99 {p99}',
+      'harness.handles': 'Active handles',
+      'harness.handlesValue': '{count} · {types}',
+      'harness.contextSwitches': 'Context switches (voluntary / involuntary)',
+      'harness.versions': 'Node / V8',
+      'harness.topThreads': 'Busiest threads',
+      'harness.threadState.running': 'Running',
+      'harness.threadState.sleeping': 'Sleeping',
+      'harness.threadState.disk': 'Disk wait',
+      'harness.threadState.zombie': 'Zombie',
+      'harness.threadState.stopped': 'Stopped',
+      'harness.threadState.idle': 'Idle',
+      'harness.self': 'This process',
+      'harness.noThreads': 'This system exposes no per-thread data',
+      'session.title': 'DSH sessions',
+      'session.subtitle': 'Open sessions and the hardware they use',
+      'session.empty': 'No active sessions',
+      'session.emptyHint': 'Sessions appear here once the Host creates them',
+      'session.unavailable': 'The Host exposes no session service',
+      'session.noProcess': 'No child processes',
+      'session.id': 'Session ID',
+      'session.cwd': 'Working directory',
+      'session.running': 'Running',
+      'session.idle': 'Idle',
+      'session.messages': 'Events',
+      'session.tokens': 'Tokens',
+      'session.tokensValue': 'in {input} · out {output}',
+      'session.cacheTokens': 'cache read {value}',
+      'session.context': 'Context usage',
+      'session.contextValue': '{used} / {window}',
+      'session.contextUnknown': 'No usage recorded yet',
+      'session.stats': 'Turns / steps',
+      'session.statsValue': '{turns} turns · {steps} steps',
+      'session.llmTime': 'Model {value}',
+      'session.toolTime': 'Tools {value}',
+      'session.logBytes': 'Session log',
+      'session.logGrowth': 'growing {value}/s',
+      'session.attributed': 'Linked processes',
+      'session.pids': 'PID {pids}',
+      'session.processes': '{count} processes · {threads} threads',
+      'session.attribution.environment': 'Attributed through DSH_SESSION_ID',
+      'session.attribution.heuristic': 'Inferred from the working directory',
+      'session.attribution.none': 'Process attribution unavailable',
+      'session.live': 'Live',
+      'session.persisted': 'Persisted',
       unknown: 'Unknown',
       unavailable: 'Unavailable',
     };
@@ -439,6 +602,51 @@ body[data-ds-dark-theme] .lm-page{
 .lm-cpuTrack{flex:1;height:6px}
 .lm-cpuValue{width:52px;text-align:right;font-variant-numeric:tabular-nums}
 .lm-empty{padding:18px 0;color:var(--lm-muted);font-size:13px;text-align:center}
+.lm-harnessCard{gap:14px}
+.lm-harnessHead{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.lm-harnessTitle{display:flex;flex-direction:column;gap:2px;min-width:0}
+.lm-harnessTitle h2{margin:0;font-size:16px;font-weight:600}
+.lm-harnessTitle p{margin:0;color:var(--lm-muted);font-size:12px}
+.lm-harnessStats{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.lm-statChip{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid var(--lm-border);border-radius:8px;background:var(--lm-soft-2);font-size:12px;white-space:nowrap}
+.lm-statChipLabel{color:var(--lm-muted)}
+.lm-statChipValue{font-weight:600;font-variant-numeric:tabular-nums}
+.lm-roleBadge{display:inline-flex;align-items:center;padding:1px 7px;border-radius:6px;background:var(--lm-soft);color:var(--lm-ink-2);font-size:11px;font-weight:600;white-space:nowrap}
+.lm-roleBadge[data-role=host]{background:var(--lm-green-bg);color:var(--lm-green-text)}
+.lm-roleBadge[data-role=renderer]{background:#EFF6FF;color:#1D4ED8}
+.lm-roleBadge[data-role=subprocess],.lm-roleBadge[data-role=terminal]{background:var(--lm-amber-bg);color:var(--lm-amber-text)}
+body[data-ds-dark-theme] .lm-roleBadge[data-role=renderer]{background:#16233C;color:#93C5FD}
+.lm-harnessTable{min-width:860px}
+.lm-harnessTable td{font-variant-numeric:tabular-nums}
+.lm-harnessName{display:flex;flex-direction:column;gap:1px;min-width:0}
+.lm-harnessNameText{display:flex;align-items:center;gap:6px;font-weight:500}
+.lm-harnessCmd{max-width:320px;overflow:hidden;text-overflow:ellipsis;color:var(--lm-muted);font-size:11px}
+.lm-selfTag{padding:0 5px;border-radius:4px;background:var(--lm-strong-bg);color:var(--lm-strong-fg);font-size:10px;font-weight:600}
+.lm-hostGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px 20px}
+.lm-threadList{display:flex;flex-direction:column;gap:6px}
+.lm-threadRow{display:grid;grid-template-columns:minmax(0,1fr) 140px 64px;align-items:center;gap:10px;font-size:12px}
+.lm-threadName{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.lm-threadCpu{text-align:right;font-variant-numeric:tabular-nums;font-weight:500}
+.lm-threadState{color:var(--lm-muted);font-size:11px;white-space:nowrap}
+.lm-sessionList{display:flex;flex-direction:column;gap:12px}
+.lm-session{display:flex;flex-direction:column;gap:10px;padding:14px 16px;border:1px solid var(--lm-border);border-radius:12px;background:var(--lm-soft-2);min-width:0}
+.lm-session[data-running=true]{border-color:var(--lm-green-border);background:var(--lm-green-bg)}
+.lm-sessionHead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.lm-sessionTitle{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 240px}
+.lm-sessionName{display:flex;align-items:center;gap:8px;font-weight:600;min-width:0}
+.lm-sessionNameText{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lm-sessionId{color:var(--lm-muted);font-size:11px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lm-sessionState{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--lm-ink-2);white-space:nowrap}
+.lm-sessionStateDot{width:7px;height:7px;border-radius:50%;background:var(--lm-core-e)}
+.lm-sessionState[data-running=true] .lm-sessionStateDot{background:var(--lm-green);box-shadow:0 0 0 3px var(--lm-green-bg)}
+.lm-sessionGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px 18px}
+.lm-sessionField{display:flex;flex-direction:column;gap:2px;min-width:0}
+.lm-sessionFieldLabel{color:var(--lm-muted);font-size:11px}
+.lm-sessionFieldValue{font-size:13px;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lm-sessionBar{display:flex;flex-direction:column;gap:4px}
+.lm-sessionBarHead{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--lm-muted);font-variant-numeric:tabular-nums}
+.lm-sessionFoot{display:flex;align-items:center;gap:12px;flex-wrap:wrap;color:var(--lm-muted);font-size:11px}
+.lm-mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 @media (max-width:900px){
   .lm-content{padding:20px 16px 32px;gap:16px}
   .lm-card{padding:16px 18px}
@@ -452,6 +660,8 @@ body[data-ds-dark-theme] .lm-page{
   .lm-sensorRow{grid-template-columns:80px minmax(0,1fr) 62px}
   .lm-gridTwo,.lm-gridThree{grid-template-columns:minmax(0,1fr)}
   .lm-splitTrend,.lm-splitCores{flex-basis:100%}
+  .lm-threadRow{grid-template-columns:minmax(0,1fr) 90px 56px}
+  .lm-sessionGrid{grid-template-columns:minmax(0,1fr)}
 }
 `;
 
@@ -1489,6 +1699,473 @@ body[data-ds-dark-theme] .lm-page{
     }
 
     /**
+     * Format a duration in milliseconds for the session and thread cards.
+     * @param ms - Duration or null.
+     * @returns `840 ms` / `12.4 s` / `3.2 min`, or null.
+     */
+    function formatDuration(ms) {
+      const value = numberOrNull(ms);
+      if (value === null || value < 0) return null;
+      if (value < 1000) return Math.round(value) + ' ms';
+      if (value < 60_000) return (value / 1000).toFixed(1) + ' s';
+      return (value / 60_000).toFixed(1) + ' min';
+    }
+
+    /**
+     * Format a compact token count (`12.3K`, `1.4M`).
+     * @param value - Token count or null.
+     * @returns Display string or null.
+     */
+    function formatTokens(value) {
+      const count = numberOrNull(value);
+      if (count === null || count < 0) return null;
+      if (count < 1000) return String(Math.round(count));
+      if (count < 1_000_000) return (count / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+      return (count / 1_000_000).toFixed(2).replace(/0$/, '').replace(/\.$/, '') + 'M';
+    }
+
+    /**
+     * Format a percentage without forcing a decimal.
+     * @param value - Percentage or null.
+     * @returns Display string.
+     */
+    function formatPercentValue(value) {
+      const parsed = numberOrNull(value);
+      if (parsed === null) return '—';
+      const rounded = Math.round(parsed * 10) / 10;
+      return (Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)) + '%';
+    }
+
+    /**
+     * Read the localized label of one harness process role.
+     * @param t - Translate function.
+     * @param role - Role slug.
+     * @returns Human label.
+     */
+    function roleLabel(t, role) {
+      const key = 'harness.role.' + (textOrNull(role) ?? 'other');
+      const label = t(key);
+      return label === key ? t('harness.role.other') : label;
+    }
+
+    /**
+     * One label/value pair inside a harness or session grid.
+     * @param props - Label, value, and an optional title.
+     * @returns The field element.
+     */
+    function Field(props) {
+      return h('div', { className: 'lm-sessionField' }, [
+        h('span', { key: 'label', className: 'lm-sessionFieldLabel' }, props.label),
+        h('span', { key: 'value', className: 'lm-sessionFieldValue', title: props.title ?? props.value }, props.value),
+      ]);
+    }
+
+    /**
+     * One labelled progress bar with its value text.
+     * @param props - Label value text, width percentage, color, and hint.
+     * @returns The bar block.
+     */
+    function SessionBar(props) {
+      const width = percentOrNull(props.width);
+      return h('div', { className: 'lm-sessionBar' }, [
+        h('div', { key: 'head', className: 'lm-sessionBarHead' }, [
+          h('span', { key: 'label' }, props.label),
+          h('span', { key: 'value', title: props.hint }, props.value),
+        ]),
+        h('div', { key: 'track', className: 'lm-track', style: { height: 6 } }, h('div', {
+          className: 'lm-fill',
+          style: { width: (width === null ? 0 : width) + '%', background: props.color },
+        })),
+      ]);
+    }
+
+    /**
+     * The Host runtime card: JavaScript heap, event-loop delay, active handles,
+     * context switches, and the busiest Host threads.
+     * @param props - Harness block and translate function.
+     * @returns The card element.
+     */
+    function HostRuntimeCard(props) {
+      const t = props.t;
+      const host = props.harness?.host ?? null;
+      if (host === null) {
+        return h('section', { className: 'lm-card lm-harnessCard', 'aria-label': t('harness.hostTitle') }, [
+          h(CardHead, { key: 'head', title: t('harness.hostTitle'), hint: t('unavailable') }),
+          h('div', { className: 'lm-empty' }, t('harness.unavailable')),
+        ]);
+      }
+      const heap = host.heap ?? null;
+      const heapUsage = percentOrNull(heap?.usage);
+      const loop = host.eventLoop ?? null;
+      const handles = host.handles ?? null;
+      const usage = host.resourceUsage ?? null;
+      const threads = host.threads ?? null;
+      const versions = host.versions ?? null;
+      const threadRows = Array.isArray(threads?.top) ? threads.top : [];
+      const byType = handles?.byType === null || handles?.byType === undefined
+        ? []
+        : Object.entries(handles.byType).sort((left, right) => right[1] - left[1]).slice(0, 3);
+      const handleTypes = byType.map(([name, count]) => name + ' ×' + count).join(', ');
+      const loopValue = loop === null || loop.meanMs === null
+        ? '—'
+        : t('harness.eventLoopValue', {
+          mean: (loop.meanMs ?? 0).toFixed(1) + ' ms',
+          p99: loop.p99Ms === null ? '—' : loop.p99Ms.toFixed(1) + ' ms',
+        });
+      const switches = usage === null
+        ? '—'
+        : formatCount(usage.voluntaryContextSwitches ?? 0) + ' / ' + formatCount(usage.involuntaryContextSwitches ?? 0);
+      return h('section', { className: 'lm-card lm-harnessCard', 'aria-label': t('harness.hostTitle') }, [
+        h(CardHead, {
+          key: 'head',
+          title: t('harness.hostTitle'),
+          hint: 'PID ' + (host.pid ?? '—') + ' · ' + (formatUptime(host.uptimeSeconds, t) ?? '—'),
+        }),
+        h('div', { key: 'heap', className: 'lm-split', style: { flexDirection: 'column', gap: 8 } }, [
+          h(SessionBar, {
+            key: 'heap',
+            label: t('harness.heap'),
+            value: heap === null
+              ? '—'
+              : t('harness.heapUsage', {
+                used: formatBytes(heap.usedBytes) ?? '—',
+                total: formatBytes(heap.totalBytes) ?? '—',
+              }),
+            width: heapUsage,
+            color: 'var(--lm-green)',
+          }),
+        ]),
+        h('div', { key: 'grid', className: 'lm-hostGrid' }, [
+          h(Field, { key: 'loop', label: t('harness.eventLoop'), value: loopValue }),
+          h(Field, {
+            key: 'handles',
+            label: t('harness.handles'),
+            value: handles === null
+              ? '—'
+              : t('harness.handlesValue', { count: formatCount(handles.active), types: handleTypes === '' ? '—' : handleTypes }),
+            title: handleTypes,
+          }),
+          h(Field, { key: 'switches', label: t('harness.contextSwitches'), value: switches }),
+          h(Field, {
+            key: 'versions',
+            label: t('harness.versions'),
+            value: ['Node ' + (versions?.node ?? '—'), 'V8 ' + (versions?.v8 ?? '—')].join(' · '),
+          }),
+        ]),
+        h('div', { key: 'threads', className: 'lm-threadList' }, [
+          h('span', { key: 'title', className: 'lm-sessionFieldLabel' }, t('harness.topThreads')),
+          threadRows.length === 0
+            ? h('div', { key: 'empty', className: 'lm-empty', style: { padding: '6px 0' } }, t('harness.noThreads'))
+            : threadRows.map((thread) => h('div', { key: 'thread' + thread.tid, className: 'lm-threadRow' }, [
+              h('span', { key: 'name', className: 'lm-threadName', title: thread.name }, thread.name),
+              h('div', { key: 'bar', className: 'lm-track', style: { height: 6 } }, h('div', {
+                className: 'lm-fill',
+                style: {
+                  width: Math.min(100, Math.max(thread.cpuPercent > 0 ? 2 : 0, thread.cpuPercent ?? 0)) + '%',
+                  background: 'var(--lm-ink)',
+                },
+              })),
+              h('span', { key: 'cpu', className: 'lm-threadCpu' }, formatPercentValue(thread.cpuPercent)),
+            ])),
+        ]),
+      ]);
+    }
+
+    /**
+     * The Harness process-tree card.
+     * @param props - Harness block, system totals, and translate function.
+     * @returns The card element.
+     */
+    function HarnessCard(props) {
+      const t = props.t;
+      const harness = props.harness;
+      const rows = Array.isArray(harness?.processes) ? harness.processes : [];
+      const totals = harness?.totals ?? null;
+      const cpuCores = numberOrNull(props.cpuCores);
+      const systemMemory = numberOrNull(props.systemMemory);
+      const cpuShare = totals?.cpuPercent !== null && totals?.cpuPercent !== undefined && cpuCores !== null && cpuCores > 0
+        ? totals.cpuPercent / cpuCores
+        : null;
+      const memoryShare = totals?.memoryBytes !== null && totals?.memoryBytes !== undefined && systemMemory !== null && systemMemory > 0
+        ? (totals.memoryBytes / systemMemory) * 100
+        : null;
+      const available = harness?.available === true;
+      const hint = available
+        ? [
+          t('harness.processes', { count: formatCount(totals?.processCount ?? rows.length) }),
+          totals?.threads === null || totals?.threads === undefined
+            ? null
+            : t('harness.threads', { count: formatCount(totals.threads) }),
+        ].filter(Boolean).join(' · ')
+        : t('harness.unavailable');
+      const maxCpu = Math.max(4, ...rows.map((row) => numberOrNull(row?.cpuPercent) ?? 0));
+      const chips = available
+        ? [
+          {
+            key: 'cpu',
+            label: t('harness.totalCpu'),
+            value: formatPercentValue(cpuShare ?? totals?.cpuPercent),
+            title: cpuShare === null ? null : t('harness.cpuShare', { value: formatPercentValue(cpuShare) }),
+          },
+          {
+            key: 'memory',
+            label: t('harness.totalMemory'),
+            value: formatBytes(totals?.memoryBytes) ?? '—',
+            title: memoryShare === null ? null : t('harness.memoryShare', { value: formatPercentValue(memoryShare) }),
+          },
+          {
+            key: 'io',
+            label: t('harness.totalIo'),
+            value: t('harness.io', {
+              read: formatRate(totals?.readBytesPerSecond) ?? '—',
+              write: formatRate(totals?.writeBytesPerSecond) ?? '—',
+            }),
+            title: null,
+          },
+        ]
+        : [];
+      return h('section', { className: 'lm-card lm-harnessCard', 'aria-label': t('harness.title') }, [
+        h('div', { key: 'head', className: 'lm-harnessHead' }, [
+          h('div', { key: 'title', className: 'lm-harnessTitle' }, [
+            h('h2', { key: 'h2' }, t('harness.title')),
+            h('p', { key: 'p' }, t('harness.subtitle')),
+          ]),
+          h('div', { key: 'stats', className: 'lm-harnessStats' }, [
+            h('span', { key: 'hint', className: 'lm-hint' }, hint),
+            ...chips.map((chip) => h('span', {
+              key: chip.key,
+              className: 'lm-statChip',
+              title: chip.title ?? chip.value,
+            }, [
+              h('span', { key: 'label', className: 'lm-statChipLabel' }, chip.label),
+              h('span', { key: 'value', className: 'lm-statChipValue' }, chip.value),
+            ])),
+          ]),
+        ]),
+        available
+          ? h('div', { key: 'wrap', className: 'lm-tableWrap' }, h('table', { className: 'lm-table lm-harnessTable' }, [
+            h('thead', { key: 'head' }, h('tr', null, [
+              h('th', { key: 'name' }, t('proc.name')),
+              h('th', { key: 'role' }, t('harness.role')),
+              h('th', { key: 'pid' }, t('harness.pid')),
+              h('th', { key: 'cpu', style: { width: 180 } }, t('proc.cpu')),
+              h('th', { key: 'rss', style: { textAlign: 'right' } }, t('harness.rss')),
+              h('th', { key: 'swap', style: { textAlign: 'right' } }, t('harness.swap')),
+              h('th', { key: 'threads', style: { textAlign: 'right' } }, t('harness.threadsCol')),
+              h('th', { key: 'io' }, t('harness.io')),
+              h('th', { key: 'fd', style: { textAlign: 'right' } }, t('harness.fd')),
+            ])),
+            h('tbody', { key: 'body' }, rows.map((row, index) => {
+              const cpuPercent = numberOrNull(row?.cpuPercent);
+              const width = cpuPercent === null
+                ? 0
+                : Math.min(100, Math.max(cpuPercent > 0 ? 2 : 0, (cpuPercent / maxCpu) * 100));
+              const name = textOrNull(row?.name) ?? t('unknown');
+              const command = textOrNull(row?.command);
+              return h('tr', { key: (row?.pid ?? '') + ':' + index }, [
+                h('td', { key: 'name' }, h('div', { className: 'lm-harnessName' }, [
+                  h('span', { key: 'text', className: 'lm-harnessNameText' }, [
+                    h('span', { key: 'name' }, name),
+                    row?.isHost === true ? h('span', { key: 'self', className: 'lm-selfTag' }, t('harness.self')) : null,
+                  ]),
+                  command === null ? null : h('span', { key: 'cmd', className: 'lm-harnessCmd', title: command }, command),
+                ])),
+                h('td', { key: 'role' }, h('span', {
+                  className: 'lm-roleBadge',
+                  'data-role': textOrNull(row?.role) ?? 'other',
+                }, roleLabel(t, row?.role))),
+                h('td', { key: 'pid', className: 'lm-procMuted' }, numberOrNull(row?.pid) ?? '—'),
+                h('td', { key: 'cpu' }, h('div', { className: 'lm-cpuCell' }, [
+                  h('div', { key: 'bar', className: 'lm-track lm-cpuTrack' }, h('div', {
+                    className: 'lm-fill',
+                    style: { width: width + '%', background: 'var(--lm-ink)' },
+                  })),
+                  h('span', { key: 'value', className: 'lm-cpuValue' }, formatPercentValue(cpuPercent)),
+                ])),
+                h('td', { key: 'rss', style: { textAlign: 'right' } }, formatBytes(row?.memoryBytes) ?? '—'),
+                h('td', { key: 'swap', style: { textAlign: 'right' } }, formatBytes(row?.swapBytes) ?? '—'),
+                h('td', { key: 'threads', style: { textAlign: 'right' } }, formatCount(row?.threads) ),
+                h('td', { key: 'io' }, t('harness.io', {
+                  read: formatRate(row?.readBytesPerSecond) ?? '—',
+                  write: formatRate(row?.writeBytesPerSecond) ?? '—',
+                })),
+                h('td', { key: 'fd', style: { textAlign: 'right' } }, formatCount(row?.fileDescriptors)),
+              ]);
+            })),
+          ]))
+          : h('div', { key: 'empty', className: 'lm-empty' }, [
+            h('div', { key: 'title' }, t('harness.unavailable')),
+            h('div', { key: 'hint', style: { fontSize: 11, marginTop: 2 } }, t('harness.unavailableHint')),
+          ]),
+      ]);
+    }
+
+    /**
+     * The live-session card: one block per Host session with its attributed
+     * process hardware use and its transcript accounting.
+     * @param props - Harness block and translate function.
+     * @returns The card element.
+     */
+    function SessionCard(props) {
+      const t = props.t;
+      const harness = props.harness;
+      const sessions = Array.isArray(harness?.sessions) ? harness.sessions : [];
+      const available = harness !== null && harness !== undefined;
+      const attribution = textOrNull(harness?.attribution);
+      const hint = !available
+        ? t('session.unavailable')
+        : sessions.length === 0 ? t('session.empty') : t('session.subtitle');
+      return h('section', { className: 'lm-card lm-harnessCard', 'aria-label': t('session.title') }, [
+        h('div', { key: 'head', className: 'lm-harnessHead' }, [
+          h('div', { key: 'title', className: 'lm-harnessTitle' }, [
+            h('h2', { key: 'h2' }, t('session.title')),
+            h('p', { key: 'p' }, hint),
+          ]),
+          h('div', { key: 'stats', className: 'lm-harnessStats' }, [
+            attribution === null
+              ? null
+              : h('span', {
+                key: 'attr',
+                className: 'lm-statChip',
+                title: t('session.attribution.' + attribution),
+              }, [
+                h('span', { key: 'label', className: 'lm-statChipLabel' }, t('session.attributed')),
+                h('span', { key: 'value', className: 'lm-statChipValue' }, t('session.attribution.' + attribution)),
+              ]),
+          ]),
+        ]),
+        sessions.length === 0
+          ? h('div', { key: 'empty', className: 'lm-empty' }, [
+            h('div', { key: 'title' }, t('session.empty')),
+            h('div', { key: 'hint', style: { fontSize: 11, marginTop: 2 } }, t('session.emptyHint')),
+          ])
+          : h('div', { key: 'list', className: 'lm-sessionList' }, sessions.map((session) => {
+            const sessionId = textOrNull(session?.sessionId) ?? '—';
+            const title = textOrNull(session?.title) ?? sessionId;
+            const running = session?.running === true;
+            const tokens = session?.tokens ?? null;
+            const context = session?.context ?? null;
+            const stats = session?.stats ?? null;
+            const processCount = numberOrNull(session?.processCount) ?? 0;
+            const threads = numberOrNull(session?.threads);
+            const contextUsage = percentOrNull(context?.usage);
+            const contextValue = context === null || context.windowTokens === null
+              ? t('session.contextUnknown')
+              : t('session.contextValue', {
+                used: formatTokens(context.projectedTokens ?? context.usedTokens) ?? '—',
+                window: formatTokens(context.windowTokens) ?? '—',
+              });
+            const pids = Array.isArray(session?.pids) ? session.pids : [];
+            return h('div', {
+              key: sessionId,
+              className: 'lm-session',
+              'data-running': running ? 'true' : 'false',
+            }, [
+              h('div', { key: 'head', className: 'lm-sessionHead' }, [
+                h('div', { key: 'title', className: 'lm-sessionTitle' }, [
+                  h('div', { key: 'name', className: 'lm-sessionName' }, [
+                    h('span', { key: 'text', className: 'lm-sessionNameText', title: title }, title),
+                    h('span', {
+                      key: 'live',
+                      className: 'lm-roleBadge',
+                      'data-role': session?.live === false ? 'other' : 'host',
+                    }, session?.live === false ? t('session.persisted') : t('session.live')),
+                  ]),
+                  h('span', { key: 'id', className: 'lm-sessionId', title: sessionId }, sessionId),
+                ]),
+                h('span', { key: 'state', className: 'lm-sessionState', 'data-running': running ? 'true' : 'false' }, [
+                  h('span', { key: 'dot', className: 'lm-sessionStateDot', 'aria-hidden': 'true' }),
+                  running ? t('session.running') : t('session.idle'),
+                ]),
+              ]),
+              h('div', { key: 'grid', className: 'lm-sessionGrid' }, [
+                h(Field, {
+                  key: 'cpu',
+                  label: t('proc.cpu'),
+                  value: formatPercentValue(session?.cpuPercent),
+                }),
+                h(Field, {
+                  key: 'memory',
+                  label: t('harness.rss'),
+                  value: formatBytes(session?.memoryBytes) ?? '—',
+                }),
+                h(Field, {
+                  key: 'io',
+                  label: t('harness.io'),
+                  value: t('harness.io', {
+                    read: formatRate(session?.readBytesPerSecond) ?? '—',
+                    write: formatRate(session?.writeBytesPerSecond) ?? '—',
+                  }),
+                }),
+                h(Field, {
+                  key: 'processes',
+                  label: t('session.attributed'),
+                  value: processCount === 0
+                    ? t('session.noProcess')
+                    : t('session.processes', { count: formatCount(processCount), threads: formatCount(threads ?? 0) }),
+                  title: pids.length === 0 ? null : t('session.pids', { pids: pids.join(', ') }),
+                }),
+                h(Field, {
+                  key: 'tokens',
+                  label: t('session.tokens'),
+                  value: tokens === null
+                    ? '—'
+                    : t('session.tokensValue', {
+                      input: formatTokens(tokens.inputTokens) ?? '—',
+                      output: formatTokens(tokens.outputTokens) ?? '—',
+                    }),
+                  title: tokens?.totalTokens === null || tokens?.totalTokens === undefined
+                    ? null
+                    : formatTokens(tokens.totalTokens) + ' total',
+                }),
+                h(Field, {
+                  key: 'stats',
+                  label: t('session.stats'),
+                  value: stats === null
+                    ? '—'
+                    : t('session.statsValue', {
+                      turns: formatCount(stats.turns ?? 0),
+                      steps: formatCount(stats.steps ?? 0),
+                    }),
+                  title: stats === null ? null : [
+                    t('session.llmTime', { value: formatDuration(stats.llmMs) ?? '—' }),
+                    t('session.toolTime', { value: formatDuration(stats.toolMs) ?? '—' }),
+                  ].join(' · '),
+                }),
+                h(Field, {
+                  key: 'log',
+                  label: t('session.logBytes'),
+                  value: formatBytes(session?.logBytes) ?? '—',
+                  title: session?.logBytesPerSecond === null || session?.logBytesPerSecond === undefined
+                    ? null
+                    : t('session.logGrowth', { value: formatBytes(session.logBytesPerSecond) ?? '—' }),
+                }),
+                h(Field, {
+                  key: 'events',
+                  label: t('session.messages'),
+                  value: formatCount(session?.events),
+                }),
+              ]),
+              h(SessionBar, {
+                key: 'context',
+                label: t('session.context'),
+                value: contextValue,
+                width: contextUsage,
+                color: contextUsage !== null && contextUsage >= 85 ? 'var(--lm-red)' : 'var(--lm-blue)',
+              }),
+              h('div', { key: 'foot', className: 'lm-sessionFoot' }, [
+                h('span', { key: 'cwd', className: 'lm-mono', title: textOrNull(session?.cwd) ?? '' },
+                  textOrNull(session?.cwd) ?? '—'),
+                session?.vramBytes === null || session?.vramBytes === undefined
+                  ? null
+                  : h('span', { key: 'vram' }, t('gpu.vramLine', { value: formatBytes(session.vramBytes) ?? '—' })),
+              ]),
+            ]);
+          })),
+      ]);
+    }
+
+    /**
      * Sidebar glyph: a display with usage bars.
      * @param props - Panel icon props from the sidebar.
      * @returns The icon element.
@@ -1526,9 +2203,10 @@ body[data-ds-dark-theme] .lm-page{
       const [intervalMs, setIntervalMs] = React.useState(2000);
       const data = snapshot.data;
       const platform = typeof data?.platform === 'string' ? data.platform : null;
+      const hostSchema = numberOrNull(data?.schemaVersion);
       const legacyHost = data !== null
         && typeof data === 'object'
-        && (numberOrNull(data.schemaVersion) === null || data.os === undefined);
+        && (hostSchema === null || data.os === undefined || hostSchema < REQUIRED_SCHEMA);
       const os = data?.os ?? (data === null ? null : { name: platform === 'win32' ? 'Windows' : platform === 'darwin' ? 'macOS' : 'Linux', release: null });
       const cpu = data?.cpu ?? null;
       const memory = data?.memory ?? null;
@@ -1539,6 +2217,7 @@ body[data-ds-dark-theme] .lm-page{
       const processes = data?.processes ?? null;
       const network = data?.network ?? null;
       const diskIO = data?.diskIO ?? null;
+      const harness = data?.harness ?? null;
       const status = snapshot.error !== null
         ? 'error'
         : intervalMs === 0 && !snapshot.loading ? 'paused' : 'collecting';
@@ -1783,6 +2462,15 @@ body[data-ds-dark-theme] .lm-page{
             h(NetworkCard, { key: 'network', network, t }),
             h(SensorsCard, { key: 'sensors', sensors, fan, t }),
           ]),
+          h(HarnessCard, {
+            key: 'harness',
+            harness,
+            cpuCores: numberOrNull(cpu?.threads) ?? numberOrNull(cpu?.cores),
+            systemMemory: memTotal,
+            t,
+          }),
+          h(SessionCard, { key: 'sessions', harness, t }),
+          h(HostRuntimeCard, { key: 'host', harness, t }),
           h(ProcessCard, { key: 'processes', processes, t }),
         ])),
       ]);

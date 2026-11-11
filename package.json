@@ -1,7 +1,7 @@
 {
   "name": "dsh-plugin-local-machine",
-  "version": "2.0.0",
-  "description": "Local system dashboard: CPU, memory, GPU, disk, network, sensors, and top processes with live refresh and trends.",
+  "version": "2.1.0",
+  "description": "Local system dashboard: CPU, memory, GPU, disk, network, sensors, and top processes, plus DSH process-tree, per-thread, and per-session monitoring.",
   "keywords": [
     "dsh",
     "dsh-plugin",
@@ -12,6 +12,7 @@
     "network",
     "processes",
     "system-monitor",
+    "sessions",
     "sidebar",
     "macos",
     "windows",

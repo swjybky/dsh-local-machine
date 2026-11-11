@@ -1,6 +1,6 @@
 # dsh-plugin-local-machine
 
-一个 DSH（DeepSeek Harness）插件包：在左侧栏新增 **本机管理** 全局面板，集中展示本机系统信息，以及 CPU、内存、GPU、磁盘、网络、温度、风扇和进程的实时状态。支持 Linux、macOS 和 Windows。
+一个 DSH（DeepSeek Harness）插件包：在左侧栏新增 **本机管理** 全局面板，集中展示本机系统信息，以及 CPU、内存、GPU、磁盘、网络、温度、风扇和进程的实时状态；另外提供更细的维度，单独盯住运行在本机的 DSH 进程与会话。支持 Linux、macOS 和 Windows。
 
 [English](README.md)
 
@@ -18,6 +18,10 @@
   - 磁盘占用与读写速率；网络接口、链路速率、IPv4 地址、累计流量和实时速率；
   - 温度传感器与系统风扇；
   - CPU 占用最高的 8 个进程，包含 PID、用户、CPU 进度条、常驻内存；NVIDIA 环境下还显示进程显存。
+- 三张专门盯 DSH 的卡片，均为整行宽：
+  - **DSH 进程**：当前 Harness 进程树（主进程、GPU 进程、渲染进程、Host、工具进程、工具子进程、终端），带角色徽标，逐个显示 CPU、常驻内存、交换、线程数、读写速率、文件描述符、套接字数量与已建立的远端连接；
+  - **DSH 会话**：Host 已知的全部会话，显示标题、工作目录、活动/空闲状态、事件数、Token 合计、上下文占用、轮次与步骤、模型与工具耗时、会话文件大小与增长速度，以及归属到该会话的进程和线程；
+  - **Host 运行时**：进程运行时长、Node/Electron/V8 版本、JS 堆占用、事件循环延迟、按类型统计的活动句柄、资源用量计数，以及 DSH 进程内占用最高的线程。
 - 中英文案，自动适配浅色/深色主题。
 - 不需要原生模块、编译步骤、管理员权限，也不在后台保留采样定时器：面板打开时采样一次，之后按所选间隔采样；离开面板即停止，隐藏的标签页跳过自动采样。
 
@@ -87,8 +91,18 @@ plugin_manager install_bundle
 | 温度与风扇 | hwmon（`coretemp`、`nvme`、`acpitz`、`amdgpu` 等） | 无无需提权的系统传感器接口；安装 `nvidia-smi` 时显示 NVIDIA GPU 温度 | `MSAcpi_ThermalZoneTemperature` 和 `Win32_Fan`，外加 NVIDIA GPU 温度 |
 | 进程 Top 8 | `ps` 按 CPU 排序；线程总数来自 `/proc/loadavg` | `ps` 按 CPU 排序；线程数取 `sysctl kern.num_threads` | `Win32_PerfFormattedData_PerfProc_Process` |
 | 进程 GPU 显存 | 检测到 NVIDIA 时调用 `nvidia-smi --query-compute-apps` | 同上 | 同上 |
+| DSH 进程树 | `ps -A -ww -o pid=,ppid=,user=,pcpu=,rss=,nlwp=,etime=,stat=,comm=,args=`，再筛出以 DSH 主进程（或 `ARGV0` 对应进程）为根的子树 | 同上，但不带 `nlwp`（macOS 的 `ps` 没有该列），所以线程数只在 Linux 上来自 `/proc` | Windows PowerShell `Get-CimInstance Win32_Process` 的 `ParentProcessId`、`WorkingSetSize`、`ThreadCount` 和 `CommandLine` |
+| DSH 进程角色 | `classifyDshRole` 按命令行匹配：Electron 的 `--type=renderer/gpu-process/utility`、`dsh-host/lib`、`app.asar.unpacked/dsh/lib`，以及工具/终端子进程特征 | 同上 | 同上 |
+| 单进程 CPU、内存、交换 | `ps` 的 `pcpu`/`rss`；树内成员再读 `/proc/<pid>/status` 的 `VmRSS`/`VmSwap` | 只有 `ps`；交换和常驻内存都来自 `ps` | `Win32_Process` 的 `UserModeTime` 增量与 `WorkingSetSize` |
+| 单进程读写、文件描述符、套接字 | `/proc/<pid>/io`（`rchar`/`wchar`/`syscr`/`syscw`）、`readlink /proc/<pid>/fd`，以及把 `socket:[inode]` 经 `/proc/<pid>/net/tcp`、`tcp6` 映射到已建立的对端 | 不暴露，这些列显示 **—** | 不提供逐进程数据，这些列显示 **—** |
+| Host 的 JS 堆、事件循环延迟、句柄 | `process.memoryUsage()`、`perf_hooks.monitorEventLoopDelay`、`process._getActiveHandles()` 与 `getActiveResourcesInfo()` | 同上 | 同上 |
+| 占用最高的线程 | `/proc/self/task/<tid>/stat`（utime+stime 时钟数、状态、线程名），`CLK_TCK` 取自 `getconf CLK_TCK`（默认 100） | 不暴露，卡片直接说明，而不是显示一堆 0 | 不暴露，卡片直接说明，而不是显示一堆 0 |
+| 会话列表、Token、上下文占用、轮次/步骤 | `ctx.sessionProjections.snapshot(session).values`（`title`、`tokenUsage`、`contextPressure`、`sessionStats`），会话文件字节数与事件数来自 `persistence.stat(sessionId)` | 同上 | 同上 |
+| 会话的硬件归属 | 树内成员的 `/proc/<pid>/environ` 中的 `DSH_SESSION_ID`，工具和终端子进程会继承该变量，以此为准 | 退回按工作目录字符串匹配，界面上标注 **按工作目录推断归属** | 与 macOS 相同的回退方式 |
 
 面板不会编造百分比：读不到的计数器显示 **—**、**占用不可读**、**驱动不可用** 或 **未检测到 GPU**。Windows 的进程性能计数器不提供用户名，因此该列在 Windows 上显示 **—**。Linux 和 macOS 的进程 CPU 列是 `ps` 报告的生命周期平均值，Windows 使用瞬时性能计数器；进程 GPU 显存仅对 NVIDIA 计算进程可用。
+
+同一个 Node 进程内的 V8 堆和事件循环由该进程里的所有会话共享，无法真正按对话拆分，所以 **DSH 会话** 卡片只报告会话级的 Token、上下文占用、耗时和日志大小这些真实的 Host 指标，硬件数字明确留在进程一侧。只有确实没法把任何子进程归属到某个会话时，该会话才显示 `0` 个进程；卡片上会打印归属依据，不会把启发式匹配当成精确结果。找不到 Harness 进程时，`harness.available` 为 `false`、`reason` 为 `not-detected`，卡片直接说明，而不是渲染空行。
 
 ## Host 接口
 
@@ -102,7 +116,7 @@ GET /local-machine/metrics
 
 ```json
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "sampledAt": "2026-11-09T06:58:02.515Z",
   "platform": "linux",
   "os": {
@@ -202,19 +216,107 @@ GET /local-machine/metrics
         "gpuMemoryBytes": 222298112
       }
     ]
+  },
+  "harness": {
+    "available": true,
+    "reason": null,
+    "reasonDetail": null,
+    "sampledAt": "2026-11-09T06:58:02.515Z",
+    "pid": 4001,
+    "attribution": "environment",
+    "root": { "pid": 4001, "name": "dsh", "role": "main", "command": "dsh" },
+    "host": {
+      "pid": 4102,
+      "name": "dsh-host",
+      "uptimeSeconds": 8123,
+      "versions": { "node": "22.11.0", "electron": null, "v8": "12.4" },
+      "heap": { "usedBytes": 148373504, "totalBytes": 268435456, "rssBytes": 412000256, "externalBytes": 24379392, "usage": 55.3 },
+      "eventLoop": { "meanMs": 1.8, "p99Ms": 12.4, "maxMs": 48.2, "samples": 46 },
+      "handles": { "active": 37, "byType": { "TCPSocketWrap": 12, "Timeout": 4 } },
+      "resourceUsage": {
+        "maxRssBytes": 445644800,
+        "voluntaryContextSwitches": 18244,
+        "involuntaryContextSwitches": 312,
+        "fsReads": 9712,
+        "fsWrites": 2411,
+        "ipcSent": 82,
+        "ipcReceived": 91
+      },
+      "threadPoolSize": 4,
+      "threads": {
+        "available": true,
+        "count": 24,
+        "top": [{ "tid": 4110, "name": "dsh-host", "state": "running", "cpuPercent": 3.4 }]
+      }
+    },
+    "processes": [
+      {
+        "pid": 4001,
+        "ppid": 1,
+        "role": "main",
+        "name": "dsh",
+        "command": "dsh",
+        "cpuPercent": 1.6,
+        "memoryBytes": 268435456,
+        "swapBytes": 0,
+        "threads": 32,
+        "uptimeSeconds": 8123,
+        "state": "sleeping",
+        "sessionId": null,
+        "isHost": false,
+        "readBytesPerSecond": null,
+        "writeBytesPerSecond": null,
+        "fileDescriptors": 84,
+        "socketCount": 16,
+        "voluntaryContextSwitches": 9104,
+        "involuntaryContextSwitches": 88,
+        "peers": [{ "protocol": "tcp", "remoteHost": "127.0.0.1", "remotePort": 37487, "localPort": 51204 }],
+        "gpuMemoryBytes": null
+      }
+    ],
+    "totals": { "processCount": 6, "cpuPercent": 7.9, "memoryBytes": 1073741824, "threads": 156, "readBytesPerSecond": 204800, "writeBytesPerSecond": 40960 },
+    "sessions": [
+      {
+        "sessionId": "session-4b91e77d",
+        "title": "加一个硬件监控面板",
+        "cwd": "/home/workstation/project",
+        "running": true,
+        "live": true,
+        "events": 412,
+        "tokens": { "inputTokens": 214000, "outputTokens": 18200, "cacheReadTokens": 198000, "cacheWriteTokens": 42000, "totalTokens": 472200 },
+        "context": { "usedTokens": 118400, "projectedTokens": 120100, "windowTokens": 200000, "usage": 59.2 },
+        "stats": { "turns": 18, "steps": 64, "llmMs": 412000, "toolMs": 128000, "ttftMs": 640, "ttftSteps": 61, "decodeMs": 208000, "decodeTokens": 18200 },
+        "logBytes": 4194304,
+        "logBytesPerSecond": 0,
+        "processCount": 1,
+        "threads": 1,
+        "cpuPercent": 0.4,
+        "memoryBytes": 62914560,
+        "vramBytes": null,
+        "swapBytes": 0,
+        "readBytesPerSecond": 0,
+        "writeBytesPerSecond": 0,
+        "fileDescriptors": 12,
+        "socketCount": 2,
+        "pids": [5180]
+      }
+    ]
   }
 }
 ```
 
 字段说明：
 
-- `schemaVersion` 为 `2`。缺少该字段的返回来自旧版 Host，客户端会提示重启 DSH，而不是静默显示空字段。
+- `schemaVersion` 为 `3`。缺少该字段的返回来自旧版 Host，客户端会提示重启 DSH，而不是静默显示空字段。版本 `3` 新增 `harness` 块，此前所有字段结构不变。
 - `platform` 是 Node 的 `process.platform`（`linux`、`darwin`、`win32`）。
 - `cpu.cores` 仍为逻辑线程数，保持旧字段兼容；物理核心数在 `cpu.physicalCores`。`cpu.load` 仍是 1 分钟负载；`cpu.loadAverage` 提供三个值。
 - `cpu.perCore[].kind` 为 `p`、`e` 或 `null`；只有系统同时暴露两类核心时 `hybrid` 才为 true。
 - `gpu.available` 表示 GPU 占用是否可读。`gpu.reason` 为 `driver-unavailable`（型号已知但驱动查询不到）、`unsupported`（系统不提供占用）或 `not-detected`（未检测到 GPU）。
 - `null` 表示该系统没有提供该项。`diskIO`、`network`、`processes`、`fan` 在系统没有可用数据源时可能为 `null`。
 - `sensors[].key` 为 `cpu`、`gpu`、`nvme`、`board` 或 `other`；`nvidia-smi` 读取到的 GPU 温度会合并进该数组，无法归类的 ACPI 温度区使用 `other` 并保留原始标签。
+- 找不到 Harness 进程树时 `harness.available` 为 `false`、`reason` 为 `not-detected`，`processes` 为空数组，但 `host` 仍描述当前进程。`harness.attribution` 为 `environment` 表示归属由 `DSH_SESSION_ID` 决定，为 `heuristic` 表示走了按工作目录的回退。
+- macOS 和 Windows 上 `harness.host.threads.available` 为 `false`，因为普通权限拿不到逐线程 CPU。
+- `harness.sessions[].context` 在该会话还没有 Token 记录时为 `null`，卡片显示 **尚无用量记录**。
 
 ## 文件说明
 
@@ -223,11 +325,12 @@ GET /local-machine/metrics
 | `index.js` | Host 半：`/local-machine/metrics` 路由与连接校验 |
 | `lib/platform.js` | Host 半：跨平台探测、缓存、速率采样与快照组装 |
 | `lib/parsers.js` | Host 半：procfs、sysfs 和命令输出的纯解析器 |
+| `lib/harness.js` | Host 半：DSH 进程树、逐线程与逐会话探测、Host 运行时指标和会话归属 |
 | `client.js` | Client 半：侧边栏入口与完整面板页面 |
 | `cordis.patch.yml` | 插入 `local-machine` 行的 bundle patch |
 | `locale/*.json` | 插件管理器中各语言的标题与描述 |
 | `icon.svg` | 插件图标 |
-| `test/` | 三系统解析夹具、本机实时快照、回退与路由测试 |
+| `test/` | 三系统解析夹具、Harness 解析夹具、本机实时快照、回退与路由测试 |
 | `scripts/make-index.mjs` | 由包信息与 `HEAD` 生成 `docs/index.json`（插件市场索引 format 1） |
 | `docs/` | 对外发布的索引和图标（GitHub Pages） |
 
@@ -246,7 +349,7 @@ npm test
 ```bash
 # 1. 改 package.json 的 version，提交代码
 git add -A && git commit -m "feat: ..."
-git tag v2.0.0
+git tag v2.1.0
 
 # 2. 重新生成索引（固定到新 commit），再提交推送
 node scripts/make-index.mjs

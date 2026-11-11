@@ -52,7 +52,7 @@ test('GET /local-machine/metrics returns a snapshot', async () => {
   assert.equal(res.statusCode, 200)
   assert.equal(res.headers['content-type'], 'application/json; charset=utf-8')
   const payload = JSON.parse(res.body)
-  assert.equal(payload.schemaVersion, 2)
+  assert.equal(payload.schemaVersion, 3)
   assert.equal(typeof payload.sampledAt, 'string')
   assert.equal(payload.platform, process.platform)
   assert.equal(typeof payload.os.name, 'string')
@@ -65,6 +65,11 @@ test('GET /local-machine/metrics returns a snapshot', async () => {
   assert.ok(Array.isArray(payload.sensors))
   assert.ok(payload.network === null || typeof payload.network.interface === 'string')
   assert.ok(payload.processes === null || Array.isArray(payload.processes.top))
+  assert.equal(typeof payload.harness.available, 'boolean')
+  assert.equal(payload.harness.pid, process.pid)
+  assert.ok(Array.isArray(payload.harness.processes))
+  assert.ok(Array.isArray(payload.harness.sessions))
+  assert.equal(typeof payload.harness.host.heap.usedBytes, 'number')
 })
 
 test('other methods are rejected with 405', async () => {

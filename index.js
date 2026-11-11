@@ -1,9 +1,11 @@
 /**
  * Host half of the Local machine bundle.
  *
- * Serves one cross-platform snapshot of CPU, memory, and GPU utilization to
- * the Client panel at `/local-machine/metrics`. Sampling lives in
- * `lib/platform.js`; this file only owns the route and its admission checks.
+ * Serves one cross-platform snapshot of CPU, memory, GPU, and — when the Host
+ * exposes them — the DeepSeek Harness process tree and live sessions, to the
+ * Client panel at `/local-machine/metrics`. Sampling lives in
+ * `lib/platform.js` and `lib/harness.js`; this file only owns the route and its
+ * admission checks.
  */
 import { readSnapshot } from './lib/platform.js'
 
@@ -39,7 +41,9 @@ async function handleMetrics(ctx, req, res) {
     return
   }
   try {
-    sendJson(res, 200, await readSnapshot())
+    // The Harness blocks read the Host's own services, so the snapshot needs
+    // the live context rather than a bare process probe.
+    sendJson(res, 200, await readSnapshot({ context: ctx, argv0: process.env.ARGV0 }))
   } catch (error) {
     sendJson(res, 500, { error: error instanceof Error ? error.message : String(error) })
   }

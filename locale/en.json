@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Local machine",
-    "description": "System information plus live CPU, memory, GPU, disk, network, temperature, and process stats in the sidebar."
+    "description": "System information plus live CPU, memory, GPU, disk, network, temperature, and process stats, with DSH process, thread, and session detail."
   }
 }
